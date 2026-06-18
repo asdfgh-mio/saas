@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QADEER-AI | Bot Flow Builder</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body, html {
+            margin: 0; padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0b0c10 0%, #1f2833 100%);
+            color: #c5c6c7;
+            height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .stars {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: transparent url('https://www.transparenttextures.com/patterns/stardust.png') repeat top center;
+            animation: moveStars 50s linear infinite;
+            z-index: -1;
+        }
+
+        @keyframes moveStars {
+            from { background-position: 0 0; }
+            to { background-position: -10000px 5000px; }
+        }
+
+        .glass-panel {
+            background: rgba(31, 40, 51, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(102, 252, 241, 0.2);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .header { text-align: center; padding: 20px; border-bottom: 1px solid rgba(102, 252, 241, 0.2); }
+        .header h1 { margin: 0; color: #45a29e; font-size: 28px; text-transform: uppercase; letter-spacing: 2px;}
+        .header span { color: #66fcf1; }
+
+        .container { display: flex; gap: 30px; padding: 30px; max-width: 1400px; margin: 0 auto; height: calc(100vh - 150px); }
+        .builder-section { flex: 1; padding: 25px; overflow-y: auto; }
+        .preview-section { width: 400px; display: flex; flex-direction: column; align-items: center; }
+
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; color: #66fcf1; font-weight: bold; font-size: 14px;}
+        input, textarea, select {
+            width: 100%; padding: 12px; border-radius: 8px;
+            background: rgba(11, 12, 16, 0.8); border: 1px solid rgba(69, 162, 158, 0.5);
+            color: #fff; font-size: 14px; outline: none; transition: 0.3s;
+            box-sizing: border-box;
+        }
+        input:focus, textarea:focus { border-color: #66fcf1; box-shadow: 0 0 8px rgba(102, 252, 241, 0.5); }
+        textarea { resize: vertical; min-height: 120px; }
+
+        .btn-action {
+            background: linear-gradient(45deg, #45a29e, #66fcf1);
+            color: #0b0c10; border: none; padding: 10px 20px; border-radius: 6px;
+            font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 10px;
+        }
+        .btn-action:hover { box-shadow: 0 0 15px #66fcf1; transform: translateY(-2px); }
+        
+        .button-item { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid #45a29e; }
+
+        .mobile-mockup {
+            width: 320px; height: 580px;
+            background: #0b141a; border-radius: 40px; border: 10px solid #1f2833;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            position: relative; overflow: hidden; display: flex; flex-direction: column;
+        }
+        .wa-header { background: #202c33; padding: 15px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #2a3942; }
+        .wa-avatar { width: 40px; height: 40px; background: #66fcf1; border-radius: 50%; }
+        .wa-name { color: #e9edef; font-weight: bold; font-size: 16px; margin: 0;}
+        .wa-status { color: #8696a0; font-size: 12px; margin: 0;}
+        
+        .wa-chat-bg { flex: 1; background: url('https://i.ibb.co/3s1f16w/wa-bg.png') center/cover; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; }
+        .wa-message-container { max-width: 90%; align-self: flex-start; margin-bottom: 15px;}
+        .wa-bubble { background: #202c33; color: #e9edef; padding: 5px; border-radius: 0 8px 8px 8px; font-size: 14.5px; line-height: 1.4; box-shadow: 0 1px 0.5px rgba(0,0,0,0.13); }
+        .wa-media { width: 100%; border-radius: 8px; margin-bottom: 5px; display: none; object-fit: cover; max-height: 180px;}
+        .wa-text { padding: 5px 8px; white-space: pre-wrap;}
+        .wa-footer { font-size: 11px; color: #8696a0; text-align: right; padding: 0 5px 5px 0;}
+
+        .wa-buttons-container { display: flex; flex-direction: column; gap: 2px; margin-top: 2px;}
+        .wa-interactive-btn { background: #202c33; color: #00a884; text-align: center; padding: 12px; border-radius: 8px; font-weight: 500; font-size: 15px; box-shadow: 0 1px 0.5px rgba(0,0,0,0.13); cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; }
+
+        .connection-box { margin-top: 20px; width: 320px; background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; border: 1px solid #45a29e; text-align: center; }
+        .code-display { font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #66fcf1; margin: 10px 0; }
+    </style>
+</head>
+<body>
+
+<div class="stars"></div>
+
+<div class="header glass-panel" style="border-radius: 0; border-top: none; border-left: none; border-right: none;">
+    <h1><span>QADEER-AI</span> Central Bot Control</h1>
+</div>
+
+<div class="container">
+    <div class="builder-section glass-panel">
+        <h2 style="margin-top: 0; color: #fff;">Menu & Flow Builder</h2>
+        
+        <div class="form-group">
+            <label>Bot Phone Number (e.g. 923001234567)</label>
+            <input type="text" id="phoneNumber" placeholder="Enter your WhatsApp Number">
+        </div>
+
+        <div class="form-group">
+            <label>Media Attachment URL (Optional)</label>
+            <input type="text" id="mediaUrl" placeholder="https://example.com/image.jpg" oninput="updatePreview()">
+        </div>
+
+        <div class="form-group">
+            <label>Bot Reply Message (Title / Text)</label>
+            <textarea id="botMessage" oninput="updatePreview()" placeholder="Welcome to QADEER-AI!"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Footer Text (Optional)</label>
+            <input type="text" id="footerText" placeholder="Powered by Qadeer Khan" oninput="updatePreview()">
+        </div>
+
+        <hr style="border-color: rgba(102, 252, 241, 0.2); margin: 30px 0;">
+
+        <h3 style="color: #fff;">Interactive Buttons</h3>
+        <div id="buttonsList"></div>
+        
+        <button class="btn-action" onclick="addButton()">+ Add New Button</button>
+        <button class="btn-action" style="background: #e9edef; float: right; color: #0b141a;" onclick="saveFlow()">💾 Save Setup</button>
+    </div>
+
+    <div class="preview-section">
+        <div class="mobile-mockup">
+            <div class="wa-header">
+                <div class="wa-avatar"></div>
+                <div>
+                    <p class="wa-name">QADEER-AI</p>
+                    <p class="wa-status" id="waStatus">waiting for connection...</p>
+                </div>
+            </div>
+            
+            <div class="wa-chat-bg">
+                <div class="wa-message-container" id="waMessageContainer" style="display: none;">
+                    <div class="wa-bubble">
+                        <img id="waMedia" class="wa-media" src="" alt="Media">
+                        <div class="wa-text" id="waText"></div>
+                        <div class="wa-footer" id="waFooterText" style="display: none;"></div>
+                    </div>
+                    <div class="wa-buttons-container" id="waButtonsRender"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="connection-box">
+            <h4 style="margin: 0 0 10px 0; color: #fff;">Link Your WhatsApp</h4>
+            <button class="btn-action" onclick="requestPairingCode()" style="width: 100%;">Get Pairing Code</button>
+            <div class="code-display" id="pairCodeDisplay">----</div>
+            <p style="font-size: 12px; color: #8696a0; margin: 5px 0 0 0;" id="connStatus">Ready to connect</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    let buttonCount = 0;
+    const socket = io(); // Connect WebSocket to Backend
+
+    updatePreview();
+
+    function addButton() {
+        if(buttonCount >= 3) { alert("Max 3 buttons recommended!"); return; }
+        buttonCount++;
+        const btnId = `btn_${buttonCount}`;
+        const btnHTML = `
+            <div class="button-item" id="${btnId}">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <strong style="color: #66fcf1;">Button ${buttonCount}</strong>
+                    <button onclick="removeButton('${btnId}')" style="background: red; color: white; border: none; border-radius: 4px; cursor: pointer;">Remove</button>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <select id="${btnId}_type" onchange="updatePreview()" style="width: 30%;">
+                        <option value="reply">Quick Reply</option>
+                        <option value="url">URL Link</option>
+                    </select>
+                    <input type="text" id="${btnId}_text" placeholder="Title" oninput="updatePreview()" style="width: 70%;">
+                </div>
+                <input type="text" id="${btnId}_value" placeholder="Link URL or Command" style="margin-top: 10px;" oninput="updatePreview()">
+            </div>
+        `;
+        document.getElementById('buttonsList').insertAdjacentHTML('beforeend', btnHTML);
+        updatePreview();
+    }
+
+    function removeButton(id) { document.getElementById(id).remove(); buttonCount--; updatePreview(); }
+
+    function updatePreview() {
+        const msgText = document.getElementById('botMessage').value;
+        const mediaUrl = document.getElementById('mediaUrl').value;
+        const footerText = document.getElementById('footerText').value;
+        
+        const container = document.getElementById('waMessageContainer');
+        if(msgText || mediaUrl) { container.style.display = 'block'; } else { container.style.display = 'none'; return; }
+
+        document.getElementById('waText').textContent = msgText;
+
+        const mediaPreview = document.getElementById('waMedia');
+        if(mediaUrl) { mediaPreview.src = mediaUrl; mediaPreview.style.display = 'block'; } else { mediaPreview.style.display = 'none'; }
+
+        const footerPreview = document.getElementById('waFooterText');
+        if(footerText) { footerPreview.textContent = footerText; footerPreview.style.display = 'block'; } else { footerPreview.style.display = 'none'; }
+
+        const buttonsRender = document.getElementById('waButtonsRender');
+        buttonsRender.innerHTML = '';
+        document.querySelectorAll('.button-item').forEach((item) => {
+            const id = item.id;
+            const type = document.getElementById(`${id}_type`).value;
+            const title = document.getElementById(`${id}_text`).value || 'Button';
+            const icon = type === 'url' ? '🔗' : '↩️';
+            buttonsRender.insertAdjacentHTML('beforeend', `<div class="wa-interactive-btn"><span>${icon}</span><span>${title}</span></div>`);
+        });
+    }
+
+    // --- API POST LOGIC ---
+    async function saveFlow() {
+        const phoneNumber = document.getElementById('phoneNumber').value;
+        if(!phoneNumber) { alert("Please enter Bot Phone Number first!"); return; }
+
+        const botMessage = document.getElementById('botMessage').value;
+        const mediaUrl = document.getElementById('mediaUrl').value;
+        const footerText = document.getElementById('footerText').value;
+        const buttons = [];
+        
+        document.querySelectorAll('.button-item').forEach((item) => {
+            const id = item.id;
+            const type = document.getElementById(`${id}_type`).value;
+            const title = document.getElementById(`${id}_text`).value;
+            const value = document.getElementById(`${id}_value`).value;
+            if(title && value) buttons.push({ type, title, value });
+        });
+
+        try {
+            const response = await fetch('/api/save-menu', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phoneNumber, botMessage, mediaUrl, footerText, buttons })
+            });
+            const result = await response.json();
+            if(result.success) alert("✅ " + result.message);
+            else alert("❌ Error: " + result.error);
+        } catch (error) { alert("❌ Connection failed!"); }
+    }
+
+    // --- SOCKET.IO PAIRING LOGIC ---
+    function requestPairingCode() {
+        const phoneNumber = document.getElementById('phoneNumber').value;
+        if(!phoneNumber) { alert("Please enter a valid WhatsApp Number!"); return; }
+        
+        document.getElementById('pairCodeDisplay').innerText = "WAIT...";
+        document.getElementById('connStatus').innerText = "Connecting to WhatsApp server...";
+        
+        socket.emit('request_pairing', { phoneNumber });
+    }
+
+    socket.on('pairing_code', (data) => {
+        document.getElementById('pairCodeDisplay').innerText = data.code;
+        document.getElementById('connStatus').innerText = "Enter this code in WhatsApp!";
+    });
+
+    socket.on('connection_status', (data) => {
+        if (data.status === 'Connected') {
+            document.getElementById('pairCodeDisplay').innerText = "LINKED";
+            document.getElementById('connStatus').innerText = "Bot is Active & Ready!";
+            document.getElementById('connStatus').style.color = "#00a884";
+            document.getElementById('waStatus').innerText = "online";
+        } else if (data.status === 'LoggedOut') {
+            document.getElementById('pairCodeDisplay').innerText = "----";
+            document.getElementById('connStatus').innerText = "Session wiped. Request new code.";
+            document.getElementById('connStatus').style.color = "red";
+            document.getElementById('waStatus').innerText = "offline";
+        }
+    });
+
+    socket.on('error', (msg) => { alert("Error: " + msg); });
+</script>
+</body>
+</html>
