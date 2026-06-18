@@ -9,12 +9,12 @@ async function handleIncomingMessage(sock, msg, sessionId) {
         const config = await BotConfig.findOne({ sessionId });
         if (!config) return;
 
-        let finalMessage = config.botMessage || "Hello from QADEER-AI Bot!";
+        let finalMessage = config.botMessage;
         if (config.footerText) finalMessage += `\n\n> ${config.footerText}`;
 
         let messageOptions = {};
 
-        // BUTTONS RENDER LOGIC
+        // 🚀 ADVANCED BUTTON GENERATOR
         if (config.buttons && config.buttons.length > 0) {
             const interactiveButtons = config.buttons.map((btn, index) => {
                 if (btn.type === 'url') {
@@ -26,12 +26,20 @@ async function handleIncomingMessage(sock, msg, sessionId) {
                             merchant_url: btn.value
                         })
                     };
+                } else if (btn.type === 'copy') { // ✨ NAYA FEATURE: Copy Code Button
+                    return {
+                        name: "cta_copy",
+                        buttonParamsJson: JSON.stringify({
+                            display_text: `📋 ${btn.title}`,
+                            copy_code: btn.value
+                        })
+                    };
                 } else {
                     return {
                         name: "quick_reply",
                         buttonParamsJson: JSON.stringify({
                             display_text: `↩️ ${btn.title}`,
-                            id: `custom_reply_${index}`
+                            id: btn.value || `cmd_${index}`
                         })
                     };
                 }
@@ -41,27 +49,23 @@ async function handleIncomingMessage(sock, msg, sessionId) {
                 viewOnceMessage: {
                     message: {
                         interactiveMessage: {
-                            header: { title: "" },
+                            header: config.mediaUrl ? { hasMediaAttachment: false } : { title: "" }, 
                             body: { text: finalMessage },
                             footer: { text: config.footerText || "Powered by QADEER-AI" },
-                            nativeFlowMessage: {
-                                buttons: interactiveButtons
-                            }
+                            nativeFlowMessage: { buttons: interactiveButtons }
                         }
                     }
                 }
             };
-        } 
-        // SIMPLE TEXT OR MEDIA LOGIC
-        else {
-            if (config.mediaUrl) {
-                messageOptions = { image: { url: config.mediaUrl }, caption: finalMessage };
-            } else {
-                messageOptions = { text: finalMessage };
-            }
+        } else {
+            messageOptions = { text: finalMessage };
         }
 
-        // 🚀 SECURE META AI TAG
+        // Add Media if present (Separate from buttons to prevent bugs)
+        if (config.mediaUrl && !config.buttons.length) {
+            messageOptions = { image: { url: config.mediaUrl }, caption: finalMessage };
+        }
+
         messageOptions.secureMetaServiceLabel = true;
         if (!from.endsWith('@g.us')) messageOptions.ai = true;
 
